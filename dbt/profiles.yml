@@ -1,0 +1,11 @@
+# profiles.yml — placed at dbt/ root, used via --profiles-dir .
+# Points at your existing olist.duckdb in ../load_data/
+
+olist_analytics:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      # Relative path from this profiles.yml to your warehouse
+      path: ../load_data/olist.duckdb
+      threads: 4

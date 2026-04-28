@@ -1,0 +1,23 @@
+semantic_models:
+  - name: customers
+    description: "Customer dimension. Joinable to orders via customer_key."
+    model: ref('dim_customers')
+
+    entities:
+      - name: customer
+        type: primary
+        expr: customer_key
+
+    # Dimensions only — no measures here because dim_customers has no time column.
+    # Customer-related metrics (unique_customers) live in sem_orders.yml where
+    # we have order_date as the natural agg_time_dimension.
+    dimensions:
+      - name: customer_state
+        type: categorical
+        expr: state
+      - name: customer_city
+        type: categorical
+        expr: city
+      - name: customer_zip_prefix
+        type: categorical
+        expr: zip_code_prefix

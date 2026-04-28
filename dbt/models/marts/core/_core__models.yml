@@ -1,0 +1,120 @@
+version: 2
+
+models:
+  - name: dim_dates
+    description: "Date spine. One row per day, 2016-01-01 to 2018-12-31."
+    columns:
+      - name: date_key
+        description: "PK. The date itself."
+        data_tests: [unique, not_null]
+      - name: year
+        data_tests: [not_null]
+      - name: month
+        data_tests: [not_null]
+
+  - name: dim_customers
+    description: "Customer dimension at customer_unique_id grain."
+    columns:
+      - name: customer_key
+        description: "Surrogate PK."
+        data_tests: [unique, not_null]
+      - name: customer_unique_id
+        description: "Natural key. Stable across orders."
+        data_tests: [unique, not_null]
+      - name: state
+        data_tests: [not_null]
+
+  - name: dim_products
+    description: "Product catalog dimension."
+    columns:
+      - name: product_key
+        data_tests: [unique, not_null]
+      - name: product_id
+        data_tests: [unique, not_null]
+      - name: category_name
+        data_tests: [not_null]
+      - name: weight_bucket
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['XS (<0.5kg)','S (0.5–2kg)','M (2–5kg)','L (5–15kg)','XL (15kg+)','unknown']
+
+  - name: dim_sellers
+    description: "Seller dimension with Brazilian region rollup."
+    columns:
+      - name: seller_key
+        data_tests: [unique, not_null]
+      - name: seller_id
+        data_tests: [unique, not_null]
+      - name: region
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['Southeast','South','Center-West','Northeast','North','Unknown']
+
+  - name: fct_orders
+    description: "Order-grain fact. One row per order. Heart of sales analytics."
+    columns:
+      - name: order_key
+        data_tests: [unique, not_null]
+      - name: order_id
+        data_tests: [unique, not_null]
+      - name: customer_key
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_customers')
+                field: customer_key
+      - name: order_date_key
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_dates')
+                field: date_key
+      - name: order_status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['delivered','shipped','canceled','invoiced','processing','unavailable','created','approved']
+
+  - name: fct_order_items
+    description: "Line-item-grain fact. One row per (order_id, item_sequence)."
+    columns:
+      - name: order_item_key
+        data_tests: [unique, not_null]
+      - name: customer_key
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_customers')
+                field: customer_key
+      - name: product_key
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_products')
+                field: product_key
+      - name: seller_key
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_sellers')
+                field: seller_key
+      - name: item_price
+        description: "Should always be positive."
+
+  - name: fct_payments
+    description: "Installment-grain payment fact."
+    columns:
+      - name: payment_key
+        data_tests: [unique, not_null]
+      - name: payment_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['credit_card','boleto','voucher','debit_card','not_defined']
+      - name: installment_bucket
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['1 (single)','2-3','4-6','7-12','13+','unknown']

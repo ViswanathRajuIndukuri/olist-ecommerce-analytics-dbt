@@ -1,0 +1,209 @@
+semantic_models:
+  - name: orders
+    description: "Order-grain semantic model. Powers core sales metrics."
+    model: ref('fct_orders')
+    defaults:
+      agg_time_dimension: order_date
+
+    entities:
+      - name: order
+        type: primary
+        expr: order_id
+      - name: customer
+        type: foreign
+        expr: customer_key
+
+    dimensions:
+      - name: order_date
+        type: time
+        expr: order_date_key
+        type_params:
+          time_granularity: day
+
+      - name: order_status
+        type: categorical
+
+      - name: is_delivered
+        type: categorical
+
+      - name: is_canceled
+        type: categorical
+
+      - name: payment_type
+        type: categorical
+        expr: primary_payment_type
+
+      - name: is_multi_payment_method
+        type: categorical
+
+    measures:
+      - name: order_count
+        description: "Number of orders"
+        agg: count
+        expr: order_id
+
+      - name: revenue_sum
+        description: "Sum of gross revenue (items + freight)"
+        agg: sum
+        expr: gross_revenue
+
+      - name: item_revenue_sum
+        description: "Sum of item revenue (excludes freight)"
+        agg: sum
+        expr: gross_item_revenue
+
+      - name: freight_sum
+        description: "Sum of freight charged"
+        agg: sum
+        expr: total_freight
+
+      - name: payment_sum
+        description: "Sum of payments collected"
+        agg: sum
+        expr: total_payment_amount
+
+      - name: item_count_sum
+        description: "Sum of items across orders"
+        agg: sum
+        expr: item_count
+
+      - name: canceled_count
+        description: "Count of canceled orders"
+        agg: sum
+        expr: case when is_canceled then 1 else 0 end
+
+      - name: delivered_count
+        description: "Count of delivered orders"
+        agg: sum
+        expr: case when is_delivered then 1 else 0 end
+
+      - name: unique_customer_count
+        description: "Distinct customers placing orders"
+        agg: count_distinct
+        expr: customer_unique_id
+
+
+metrics:
+  # === Simple metrics ===
+  - name: revenue
+    label: Revenue
+    description: "Gross revenue (items + freight)"
+    type: simple
+    type_params:
+      measure: revenue_sum
+
+  - name: item_revenue
+    label: Item Revenue
+    description: "Revenue from items only, excluding freight"
+    type: simple
+    type_params:
+      measure: item_revenue_sum
+
+  - name: freight_cost
+    label: Freight Cost
+    description: "Total freight charged to customers"
+    type: simple
+    type_params:
+      measure: freight_sum
+
+  - name: order_count
+    label: Order Count
+    description: "Number of orders"
+    type: simple
+    type_params:
+      measure: order_count
+
+  - name: items_sold
+    label: Items Sold
+    description: "Total items sold across orders"
+    type: simple
+    type_params:
+      measure: item_count_sum
+
+  - name: unique_customers
+    label: Unique Customers
+    description: "Number of distinct customers placing orders"
+    type: simple
+    type_params:
+      measure: unique_customer_count
+
+  # === Helper simple metrics (used in ratios below) ===
+  - name: canceled_orders
+    label: Canceled Orders
+    type: simple
+    type_params:
+      measure: canceled_count
+
+  - name: delivered_orders
+    label: Delivered Orders
+    type: simple
+    type_params:
+      measure: delivered_count
+
+  # === Ratio metrics ===
+  - name: avg_order_value
+    label: Average Order Value
+    description: "Average revenue per order (AOV)"
+    type: ratio
+    type_params:
+      numerator: revenue
+      denominator: order_count
+
+  - name: avg_items_per_order
+    label: Average Items per Order
+    description: "Average items per order"
+    type: ratio
+    type_params:
+      numerator: items_sold
+      denominator: order_count
+
+  - name: cancellation_rate
+    label: Cancellation Rate
+    description: "Fraction of orders that were canceled"
+    type: ratio
+    type_params:
+      numerator: canceled_orders
+      denominator: order_count
+
+  - name: delivery_completion_rate
+    label: Delivery Completion Rate
+    description: "Fraction of orders successfully delivered"
+    type: ratio
+    type_params:
+      numerator: delivered_orders
+      denominator: order_count
+
+  - name: freight_pct_of_revenue
+    label: Freight % of Revenue
+    description: "Freight as percentage of total revenue"
+    type: ratio
+    type_params:
+      numerator: freight_cost
+      denominator: revenue
+
+  - name: revenue_per_customer
+    label: Revenue per Customer
+    description: "Average revenue per unique customer"
+    type: ratio
+    type_params:
+      numerator: revenue
+      denominator: unique_customers
+
+  # === Derived metrics ===
+  - name: net_revenue
+    label: Net Revenue
+    description: "Revenue from items only (Revenue minus freight)"
+    type: derived
+    type_params:
+      expr: revenue - freight_cost
+      metrics:
+        - name: revenue
+        - name: freight_cost
+
+  # === Cumulative metrics ===
+  - name: cumulative_revenue
+    label: Cumulative Revenue
+    description: "Running total of revenue over time"
+    type: cumulative
+    type_params:
+      measure: revenue_sum

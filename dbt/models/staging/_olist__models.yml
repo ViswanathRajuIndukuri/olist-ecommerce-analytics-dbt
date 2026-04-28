@@ -1,0 +1,54 @@
+version: 2
+
+models:
+  - name: stg_olist__orders
+    description: "One row per order, with derived delivery flags."
+    columns:
+      - name: order_id
+        description: "PK."
+        data_tests: [unique, not_null]
+      - name: customer_id
+        data_tests: [not_null]
+      - name: order_status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['delivered','shipped','canceled','invoiced','processing','unavailable','created','approved']
+      - name: is_delivered
+      - name: is_canceled
+      - name: delivery_days_actual
+      - name: is_late_delivery
+
+  - name: stg_olist__order_items
+    description: "Order line items. Composite key (order_id, item_sequence)."
+    columns:
+      - name: order_id
+        data_tests: [not_null]
+      - name: item_sequence
+        data_tests: [not_null]
+      - name: item_price
+      - name: total_item_revenue
+
+  - name: stg_olist__customers
+    columns:
+      - name: customer_id
+        data_tests: [unique, not_null]
+      - name: customer_unique_id
+        data_tests: [not_null]
+
+  - name: stg_olist__products
+    columns:
+      - name: product_id
+        data_tests: [unique, not_null]
+      - name: category_name
+        data_tests: [not_null]
+
+  - name: stg_olist__sellers
+    columns:
+      - name: seller_id
+        data_tests: [unique, not_null]
+
+  - name: stg_olist__payments
+    columns:
+      - name: order_id
+        data_tests: [not_null]
