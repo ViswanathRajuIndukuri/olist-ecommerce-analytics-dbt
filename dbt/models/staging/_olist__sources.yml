@@ -1,0 +1,161 @@
+version: 2
+
+sources:
+  - name: olist
+    description: "Raw Olist Brazilian e-commerce dataset, loaded from Kaggle CSVs."
+    database: olist
+    schema: raw
+    tables:
+      - name: orders
+        description: "Order header. One row per order."
+        columns:
+          - name: order_id
+            description: "Primary key."
+            data_tests:
+              - unique
+              - not_null
+          - name: customer_id
+            description: "FK to customers (per-order ID, not stable)."
+            data_tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('olist', 'customers')
+                    field: customer_id
+          - name: order_status
+            data_tests:
+              - accepted_values:
+                  arguments:
+                    values: ['delivered','shipped','canceled','invoiced','processing','unavailable','created','approved']
+          - name: order_purchase_timestamp
+            data_tests:
+              - not_null
+          - name: order_approved_at
+          - name: order_delivered_carrier_date
+          - name: order_delivered_customer_date
+          - name: order_estimated_delivery_date
+
+      - name: order_items
+        description: "Line items. Composite PK (order_id, order_item_id)."
+        columns:
+          - name: order_id
+            data_tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('olist', 'orders')
+                    field: order_id
+          - name: order_item_id
+            data_tests:
+              - not_null
+          - name: product_id
+            data_tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('olist', 'products')
+                    field: product_id
+          - name: seller_id
+            data_tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('olist', 'sellers')
+                    field: seller_id
+          - name: shipping_limit_date
+          - name: price
+          - name: freight_value
+
+      - name: customers
+        description: "Customer dimension. customer_id is per-order; customer_unique_id is stable."
+        columns:
+          - name: customer_id
+            data_tests:
+              - unique
+              - not_null
+          - name: customer_unique_id
+            data_tests:
+              - not_null
+          - name: customer_zip_code_prefix
+          - name: customer_city
+          - name: customer_state
+
+      - name: products
+        description: "Product catalog. PK = product_id."
+        columns:
+          - name: product_id
+            data_tests:
+              - unique
+              - not_null
+          - name: product_category_name
+          - name: product_weight_g
+          - name: product_length_cm
+          - name: product_height_cm
+          - name: product_width_cm
+
+      - name: sellers
+        description: "Seller dimension."
+        columns:
+          - name: seller_id
+            data_tests:
+              - unique
+              - not_null
+          - name: seller_zip_code_prefix
+          - name: seller_city
+          - name: seller_state
+
+      - name: order_payments
+        description: "Payments at installment grain. Composite PK (order_id, payment_sequential)."
+        columns:
+          - name: order_id
+            data_tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('olist', 'orders')
+                    field: order_id
+          - name: payment_sequential
+          - name: payment_type
+            data_tests:
+              - accepted_values:
+                  arguments:
+                    values: ['credit_card','boleto','voucher','debit_card','not_defined']
+          - name: payment_installments
+          - name: payment_value
+
+      - name: order_reviews
+        description: "Customer reviews. Some orders have multiple reviews."
+        columns:
+          - name: review_id
+          - name: order_id
+            data_tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('olist', 'orders')
+                    field: order_id
+          - name: review_score
+            data_tests:
+              - accepted_values:
+                  arguments:
+                    values: [1, 2, 3, 4, 5]
+
+      - name: geolocation
+        description: "Brazilian zip prefix → lat/lng. Many rows per zip."
+        columns:
+          - name: geolocation_zip_code_prefix
+          - name: geolocation_lat
+          - name: geolocation_lng
+          - name: geolocation_city
+          - name: geolocation_state
+
+      - name: product_category_name_translation
+        description: "Portuguese → English category translation."
+        columns:
+          - name: product_category_name
+            data_tests:
+              - unique
+              - not_null
+          - name: product_category_name_english
+            data_tests:
+              - not_null
